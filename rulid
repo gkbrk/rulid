@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+from collections import namedtuple
+from pathlib import Path
+import argparse
+import hashlib
+import os
+import subprocess
+import sys
+import tempfile
+import time
+
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+# Simple logger based on log levels. Prepends the current time to the logs in
+# order to give more insight on long operations.
+# -----------------------------------------------------------------------------
+
+
+class Log:
+    def log(self, *args):
+        self.__write(args)
+
+    def info(self, *args):
+        if argv.verbose > 0:
+            self.__write(args)
+
+    def verbose(self, *args):
+        if argv.verbose > 1:
+            self.__write(args)
+
+    def __write(self, l):
+        t = time.strftime("%H:%M:%S")
+        print(f"[{t}]", " ".join(map(str, l)))
+
+
+Log = Log()
+
+
+def argv():
+    """
+    Parse the command line arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Build tool for the Rust programming langauge"
+    )
+
+    parser.add_argument(
+        "-v", "--verbose", help="Verbose output", action="count", default=0
+    )
+
+    subparsers = parser.add_subparsers(
+        help="sub-command help", dest="command", required=True
+    )
+
+    clean = subparsers.add_parser("clean", help="Clean the build folder")
+    clean.set_defaults(func=cmd_clean)
+
+    build = subparsers.add_parser("build", help="Build project")
+    build.set_defaults(func=cmd_build)
+
+    parse = subparsers.add_parser("parse", help="Parse a pkgmeta file")
+    parse.add_argument("file", type=argparse.FileType("r"))
+    parse.set_defaults(func=cmd_parse)
+
+    return parser.parse_args()
+
+
+# -----------------------------------------------------------------------------
+# pkgmeta file parser
+# -----------------------------------------------------------------------------
+# pkgmeta files are written in a simple plaintext format. The first word of
+# every line is the key name, and the remaining words are the arguments.
+#
+# Package metadata
+# ================
+# name - The name of the package. This can be overridden by the package users
+# synopsis - A short description of the package
+# author - The author of the package
+# version - The version number of the package
+# type - The crate type to build: lib or bin (default)
+# -----------------------------------------------------------------------------
+
+
+class PkgMeta:
+    def __init__(self, f):
+        self.data = []
+
+        for line in f:
+            line = line.strip()
+            if line == "":
+                continue
+            parts = line.split(" ", 1)
+            self.data.append((parts[0].strip(), parts[1].strip()))
+
+    def first(self, name, default=None):
+        for k, v in self.data:
+            if k == name:
+                return v
+        return default
+
+    def list(self, name):
+        for k, v in self.data:
+            if k == name:
+                yield v
+
+    def __getattr__(self, attr):
+        return self.first(attr)
+
+# -----------------------------------------------------------------------------
+# Cache
+# -----------------------------------------------------------------------------
+
+def cache_path(key):
+    default = os.path.expanduser("~/.cache")
+    cache_home = os.environ.get("XDG_CACHE_HOME", default)
+    cache_dir = f"{cache_home}/rustbuild"
+    hashkey = hashlib.md5(key).hexdigest()
+    return f"{cache_dir}/{hashkey}"
+
+
+def download_cache(url, ttl=60 * 60 * 24):
+    """
+    Download a file with curl and cache it for ttl seconds
+    """
+    p = Path(cache_path(url.encode("utf-8")))
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    if p.exists() and time.time() - p.stat().st_mtime < ttl:
+        Log.verbose("Found", url, "in cache")
+        return p
+    else:
+        Log.info("Downloading", url)
+        # TODO: Consider replacing this with Python code instead of calling
+        # out to curl
+        subprocess.run(["curl", url, "-o", p], capture_output=True)
+        return p
+
+
+build_path = Path(".") / "build"
+build_path = build_path.resolve()
+
+
+# -----------------------------------------------------------------------------
+# Command handlers
+# -----------------------------------------------------------------------------
+
+
+def cmd_clean(args):
+    if not Path("pkgmeta").exists():
+        print("This doesn't look like a project folder")
+        return
+
+    def rmdir(d):
+        for f in d.iterdir():
+            Log.info("Cleaning", f)
+            if f.is_dir():
+                rmdir(f)
+            else:
+                f.unlink()
+
+    rmdir(Path("build/"))
+
+
+def cmd_build(args):
+    if not Path("pkgmeta").exists():
+        print("Cannot find a pkgmeta file")
+        return
+    Log.log("Starting build")
+    b = build(".")
+    Log.log("~All done~")
+
+    cwd = Path(".").resolve()
+    b = Path(b)
+    print(b.relative_to(cwd))
+
+
+def cmd_parse(args):
+    """
+    Parse a pkgmeta file and pretty-print it
+    """
+    meta = PkgMeta(args.file)
+
+    # Find the length of the longest key
+    l = max(map(lambda x: len(x[0]), meta.data))
+
+    for k, v in meta.data:
+        print(f"{k.rjust(l)} | {v}")
+
+
+def build_deps(meta):
+    for dep in meta.list("dep"):
+        dep = dep.split(" ")
+        name = dep[0]
+        method = dep[1]
+        location = dep[2]
+
+        def build_tar_gz(p):
+            with tempfile.TemporaryDirectory() as td:
+                subprocess.run(["tar", "xzf", p], cwd=td)
+                return name, build(td, name)
+
+        if method == "path":
+            # Build from a local directory
+            yield name, build(location, name)
+        elif method == "local":
+            # Build from a local tar.gz file
+            p = Path(location).resolve()
+            yield build_tar_gz(p)
+        elif method == "url":
+            # Build from a tar.gz file from a URL
+            tf = download_cache(location)
+            yield build_tar_gz(tf)
+        elif method == "ipfs":
+            # Fetch the tar.gz file from IPFS
+            gateway = os.environ.get("IPFS_GATEWAY", "https://gateway.ipfs.io")
+            url = f"{gateway}/ipfs/{location}"
+            Log.log("Fetching", name, "over IPFS. This is experimental!")
+            tf = download_cache(url)
+            yield build_tar_gz(tf)
+
+
+def build(path, overrideName=None):
+    path = Path(path).resolve()
+    h = hashlib.md5(f"{path}/{overrideName}".encode("ascii")).hexdigest()
+
+    m = open(path / "pkgmeta")
+    meta = PkgMeta(m)
+    m.close()
+
+    name = meta.name
+    if overrideName is not None:
+        name = overrideName
+
+    pkg_type = meta.first("type", "bin")
+
+    depflags = []
+    for n, p in build_deps(meta):
+        depflags.append("--extern")
+        depflags.append(f"{n}={p}")
+
+    call = [
+        "rustc",
+        "--crate-name",
+        name if pkg_type == "bin" else h,
+        "-C",
+        f"metadata={h}",
+        "--crate-type",
+        pkg_type,
+        "--out-dir",
+        build_path / "out",
+        "-C",
+        "opt-level=3",
+        "-C",
+        "lto",
+        *depflags,
+        "-L",
+        build_path / "out",
+        meta.first("entry", "main.rs"),
+    ]
+
+    Log.verbose("Running command", call)
+
+    if name == meta.name:
+        Log.log(f"Building {name}...")
+    else:
+        Log.log(f"Building {meta.name} as {name}...")
+
+    res = subprocess.run(call, cwd=path,)
+
+    if res.returncode != 0:
+        Log.log("Error while compiling")
+        sys.exit(1)
+
+    Log.info("Built", name)
+
+    output = build_path / "out"
+
+    if pkg_type == "lib":
+        output /= f"lib{h}.rlib"
+    else:
+        output /= name
+
+    return str(output)
+
+
+argv = argv()
+argv.func(argv)
