@@ -108,9 +108,11 @@ class PkgMeta:
     def __getattr__(self, attr):
         return self.first(attr)
 
+
 # -----------------------------------------------------------------------------
 # Cache
 # -----------------------------------------------------------------------------
+
 
 def cache_path(key):
     default = os.path.expanduser("~/.cache")
@@ -189,36 +191,35 @@ def cmd_parse(args):
         print(f"{k.rjust(l)} | {v}")
 
 
-def build_deps(meta):
-    for dep in meta.list("dep"):
-        dep = dep.split(" ")
-        name = dep[0]
-        method = dep[1]
-        location = dep[2]
+def build_dep(dep):
+    dep = dep.split(" ")
+    name = dep[0]
+    method = dep[1]
+    location = dep[2]
 
-        def build_tar_gz(p):
-            with tempfile.TemporaryDirectory() as td:
-                subprocess.run(["tar", "xzf", p], cwd=td)
-                return name, build(td, name)
+    def build_tar_gz(p):
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run(["tar", "xzf", p], cwd=td)
+            return build(td, name)
 
-        if method == "path":
-            # Build from a local directory
-            yield name, build(location, name)
-        elif method == "local":
-            # Build from a local tar.gz file
-            p = Path(location).resolve()
-            yield build_tar_gz(p)
-        elif method == "url":
-            # Build from a tar.gz file from a URL
-            tf = download_cache(location)
-            yield build_tar_gz(tf)
-        elif method == "ipfs":
-            # Fetch the tar.gz file from IPFS
-            gateway = os.environ.get("IPFS_GATEWAY", "https://gateway.ipfs.io")
-            url = f"{gateway}/ipfs/{location}"
-            Log.log("Fetching", name, "over IPFS. This is experimental!")
-            tf = download_cache(url)
-            yield build_tar_gz(tf)
+    if method == "path":
+        # Build from a local directory
+        return build(location, name)
+    elif method == "local":
+        # Build from a local tar.gz file
+        p = Path(location).resolve()
+        return build_tar_gz(p)
+    elif method == "url":
+        # Build from a tar.gz file from a URL
+        tf = download_cache(location)
+        return build_tar_gz(tf)
+    elif method == "ipfs":
+        # Fetch the tar.gz file from IPFS
+        gateway = os.environ.get("IPFS_GATEWAY", "https://gateway.ipfs.io")
+        url = f"{gateway}/ipfs/{location}"
+        Log.log("Fetching", name, "over IPFS. This is experimental!")
+        tf = download_cache(url)
+        return build_tar_gz(tf)
 
 
 def build(path, overrideName=None):
@@ -236,7 +237,9 @@ def build(path, overrideName=None):
     pkg_type = meta.first("type", "bin")
 
     depflags = []
-    for n, p in build_deps(meta):
+    for dep in meta.list('dep'):
+        n = dep.split(' ', 1)[0]
+        p = build_dep(dep)
         depflags.append("--extern")
         depflags.append(f"{n}={p}")
 
