@@ -342,6 +342,10 @@ def build(path, overrideName=None):
 
     return str(output)
 
-
 argv = argv()
-argv.func(argv)
+
+def main():
+    argv.func(argv)
+
+if __name__ == "__main__":
+    main()
