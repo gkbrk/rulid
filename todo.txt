@@ -1,0 +1,20 @@
+[Command line interface]
+- Init command to create a pkgmeta file
+- Add command to add a dependency
+
+[Rulid]
+- Optional SHA256 sums of tar files
+- Cache built packages and do not rebuild them unless there are changes
+- Testing support. Pass test flag to first target, and automatically
+  run the tests
+
+[Documentation]
+- Polish website
+- Getting started guide
+- How to create a package
+- Specification for pkgmeta format
+- Specification for package index format
+
+[Packages]
+- Write a script to make a list of all packages in the index
+  along with their documentation
