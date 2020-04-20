@@ -6,6 +6,7 @@ import hashlib
 import os
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 
@@ -63,6 +64,9 @@ def argv():
     parse = subparsers.add_parser("parse", help="Parse a pkgmeta file")
     parse.add_argument("file", type=argparse.FileType("r"))
     parse.set_defaults(func=cmd_parse)
+
+    package = subparsers.add_parser("package", help="Create a package file")
+    package.set_defaults(func=cmd_package)
 
     return parser.parse_args()
 
@@ -189,6 +193,27 @@ def cmd_parse(args):
 
     for k, v in meta.data:
         print(f"{k.rjust(l)} | {v}")
+
+def cmd_package(args):
+    """
+    Create a package from the current directory
+    """
+    if not Path("pkgmeta").exists():
+        print("Cannot find a pkgmeta file")
+        return
+    with open("pkgmeta") as m:
+        meta = PkgMeta(m)
+        name = meta.name
+        aname = f"{name}.tar.gz"
+
+        if Path(aname).exists():
+            Path(aname).unlink()
+
+        tf = tarfile.open(aname, "x:gz", format=tarfile.USTAR_FORMAT)
+        for f in Path('.').iterdir():
+            if f.is_file():
+                tf.add(f)
+        tf.close()
 
 
 def build_dep(dep):
