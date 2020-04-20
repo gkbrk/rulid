@@ -211,6 +211,7 @@ def cmd_parse(args):
     for k, v in meta.data:
         print(f"{k.rjust(l)} | {v}")
 
+
 def cmd_package(args):
     """
     Create a package from the current directory
@@ -227,7 +228,7 @@ def cmd_package(args):
             Path(aname).unlink()
 
         tf = tarfile.open(aname, "x:gz", format=tarfile.USTAR_FORMAT)
-        for f in Path('.').iterdir():
+        for f in Path(".").iterdir():
             if f.is_file():
                 tf.add(f)
         tf.close()
@@ -302,6 +303,8 @@ def build(path, overrideName=None):
         "rustc",
         "--crate-name",
         name if pkg_type == "bin" else h,
+        "--edition",
+        meta.first("edition", "2018"),
         "-C",
         f"metadata={h}",
         "--crate-type",
@@ -342,10 +345,13 @@ def build(path, overrideName=None):
 
     return str(output)
 
+
 argv = argv()
+
 
 def main():
     argv.func(argv)
+
 
 if __name__ == "__main__":
     main()
