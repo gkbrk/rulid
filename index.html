@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Rulid - Build system for Rust</title>
+        <style>
+         body,textarea,input,select{background:0;border-radius:0;font:16px sans-serif;margin:0}.addon,.btn-sm,.nav,textarea,input,select{outline:0;font-size:14px}.smooth{transition:all .2s}.btn,.nav a{text-decoration:none}.container{margin:0 20px;width:auto}@media(min-width:1310px){.container{margin:auto;width:1270px}}.btn,h2{font-size:2em}h1{font-size:3em}.btn{background:#999;border-radius:6px;border:0;color:#fff;cursor:pointer;display:inline-block;margin:2px 0;padding:12px 30px 14px}.btn:hover{background:#888}.btn:active,.btn:focus{background:#777}.btn-a{background:#0ae}.btn-a:hover{background:#09d}.btn-a:active,.btn-a:focus{background:#08b}.btn-b{background:#3c5}.btn-b:hover{background:#2b4}.btn-b:active,.btn-b:focus{background:#2a4}.btn-c{background:#d33}.btn-c:hover{background:#c22}.btn-c:active,.btn-c:focus{background:#b22}.btn-sm{border-radius:4px;padding:10px 14px 11px}.table th,.table td{padding:.5em;text-align:left}.table tbody>:nth-child(2n-1){background:#ddd}.row{margin:1% 0;overflow:auto}.col{float:left}.table,.c12{width:100%}.c11{width:91.66%}.c10{width:83.33%}.c9{width:75%}.c8{width:66.66%}.c7{width:58.33%}.c6{width:50%}.c5{width:41.66%}.c4{width:33.33%}.c3{width:25%}.c2{width:16.66%}.c1{width:8.33%}@media(max-width:870px){.row .col{width:100%}}.msg{background:#def;border-left:5px solid #59d;padding:1.5em}
+         h1 {
+             font-size: 2.5em;
+             margin: 0.2em 0;
+             border-bottom: 5px solid;
+             margin-bottom: 15px;
+             padding-bottom: 5px;
+         }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <h1>Rulid - Build system for Rust</h1>
+                <p>Rulid is a new and <i>experimental</i> build system for Rust</p>
+                <div class="row">
+                    <div class="col c4">
+                        <h3>Give it a try</h3>
+                        <p>Interested? Take a look at our installation guide.</p>
+                        <a class="btn btn-b btn-sm smooth" href="#install">Install guide</a>
+                    </div>
+                    <div class="col c4">
+                        <h3>Source code</h3>
+                        <p>Rulid is completely open source</p>
+                        <a class="btn btn-b btn-sm smooth"
+                           target="_blank"
+                           href="https://github.com/gkbrk/rulid">Github</a>
+                    </div>
+                    <div class="col c4">
+                        <h3>Read the spec</h3>
+                        <p>
+                            While Rulid currently has a single implementation,
+                            nothing is stopping you from making another one and
+                            interoperating with us. After all, nothing is better
+                            than standards.
+                        </p>
+                        <a class="btn btn-b btn-sm smooth" href="#spec">Spec</a>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <h1>Decentralized</h1>
+                <p>
+                    Rulid has first-class support for decentralized
+                    packages. Compared to traditional package managers that
+                    fetch their packages from a central repository; Rulid lets
+                    you download and distribute packages from any repository.
+                </p>
+
+                <div class="row">
+                    <div class="col c5">
+                        <h3>IPFS</h3>
+                        <p>
+                            Rulid has experimental support for package distribution over
+                            IPFS. This means once you pin a package, you can securely
+                            fetch it in a P2P fashion.
+                        </p>
+                        <p>
+                            Centralized package managers have problems with
+                            deleted packages. Once you pin an IPFS package with
+                            Rulid, it should be available from any peer that has
+                            it in the cache.
+                        </p>
+                    </div>
+                    <div class="col c2">&nbsp;</div>
+                    <div class="col c5">
+                        <h3>Good old HTTP(S)</h3>
+                        <p>
+                            The web is inherently decentralized. Rulid lets you
+                            take full advantage of that by being able to fetch
+                            packages from any URL.
+                        </p>
+                        <br>
+                        <h3>Local packages</h3>
+                        <p>
+                            Rulid support dependencies from local directories,
+                            and local package files. Use cases for this include
+                            development, monorepos and network shares with
+                            internal packages.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <h1>Curated packages</h1>
+                <p>
+                    Decentralization is good, but this isn't the wild west. If
+                    you still want a semblance of order; check out our package
+                    index.
+                </p>
+                <p>
+                    It features a curated selection of high quality packages, or
+                    examples if you want to make your own packages.
+                </p>
+                <a class="btn btn-b btn-sm smooth"
+                   target="_blank"
+                   href="https://www.gkbrk.com/rulid-index.txt">Package Index</a>
+            </div>
+            <div class="row">
+                <h1>Getting started</h1>
+                <p>
+                    Here's an example to get you going with Rulid. We'll build a
+                    program that generates numbers using a PRNG. Create an empty
+                    directory and put two files in it.
+                </p>
+                <div class="row">
+                    <div class="col c5">
+                        <p>
+                            <b>pkgmeta</b><br />
+                            <pre>name ExampleApp
+author Mr Doctor
+
+dep lcg index lcg_rand
+                            </pre>
+                        </p>
+                    </div>
+                    <div class="col c2">&nbsp;</div>
+                    <div class="col c5">
+                        <p>
+                            <b>main.rs</b><br />
+                            <pre>use lcg::LCG;
+fn main() {
+    let mut rng = LCG::new();
+    for _ in 0..10 {
+        println!("Your number is: {}", rng.next());
+    }
+}
+                            </pre>
+                        </p>
+                    </div>
+                </div>
+                <p>
+                    If you have installed Rulid correctly, you should be able to
+                    build this program by typing <code>rulid build</code>.
+                </p>
+            </div>
+            <div class="row" id="install">
+                <h1>Install guide</h1>
+                <p>
+                    The following snippet will download the Rulid source code
+                    and install it to your binaries folder. This will allow
+                    you to run Rulid anywhere on your system to build projects.
+                </p>
+                <pre>wget https://raw.githubusercontent.com/gkbrk/rulid/master/rulid
+chmod +x rulid
+sudo mv rulid /usr/bin/
+                </pre>
+            </div>
+            <div class="row" id="spec">
+                <h1>Spec</h1>
+                <p>
+                    Rulid packages are distributed as <i>tar.gz</i> files.
+                </p>
+                <p><b>// TODO: Write spec</b></p>
+            </div>
+            <hr>
+            <p>&copy; 2020 Gokberk Yaltirakli</p>
+        </div>
+    </body>
+</html>
