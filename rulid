@@ -198,6 +198,7 @@ def build_dep(dep):
     location = dep[2]
 
     def build_tar_gz(p):
+        # TODO: If tar file contains a single folder, use it as the root
         with tempfile.TemporaryDirectory() as td:
             subprocess.run(["tar", "xzf", p], cwd=td)
             return build(td, name)
@@ -220,6 +221,18 @@ def build_dep(dep):
         Log.log("Fetching", name, "over IPFS. This is experimental!")
         tf = download_cache(url)
         return build_tar_gz(tf)
+    elif method == "index":
+        # Fetch the index
+
+        ind = download_cache("https://www.gkbrk.com/rulid-index.txt")
+        with open(ind) as index:
+            for line in index:
+                line = line.strip()
+                n = line.split(" ", 1)[0]
+                if n == location:
+                    return build_dep(line)
+            Log.log("Could not find", name, "in the index")
+            sys.exit(1)
 
 
 def build(path, overrideName=None):
@@ -237,8 +250,8 @@ def build(path, overrideName=None):
     pkg_type = meta.first("type", "bin")
 
     depflags = []
-    for dep in meta.list('dep'):
-        n = dep.split(' ', 1)[0]
+    for dep in meta.list("dep"):
+        n = dep.split(" ", 1)[0]
         p = build_dep(dep)
         depflags.append("--extern")
         depflags.append(f"{n}={p}")
