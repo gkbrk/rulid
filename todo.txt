@@ -5,8 +5,6 @@
 [Rulid]
 - Optional SHA256 sums of tar files
 - Cache built packages and do not rebuild them unless there are changes
-- Testing support. Pass test flag to first target, and automatically
-  run the tests
 
 [Documentation]
 - Polish website

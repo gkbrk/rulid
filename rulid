@@ -85,6 +85,9 @@ def argv():
     package = subparsers.add_parser("package", help="Create a package file")
     package.set_defaults(func=cmd_package)
 
+    test = subparsers.add_parser("test", help="Test a package")
+    test.set_defaults(func=cmd_test)
+
     return parser.parse_args()
 
 
@@ -233,6 +236,16 @@ def cmd_package(args):
                 tf.add(f)
         tf.close()
 
+def cmd_test(args):
+    """
+    Create a test binary using the built-in rustc test suite
+    """
+    if not Path("pkgmeta").exists():
+        print("Cannot find a pkgmeta file")
+        return
+    b = build(".", extraFlags=["--test"])
+    print(b)
+
 
 def build_dep(dep):
     dep = dep.split(" ")
@@ -278,7 +291,7 @@ def build_dep(dep):
             sys.exit(1)
 
 
-def build(path, overrideName=None):
+def build(path, overrideName=None, extraFlags=None):
     path = Path(path).resolve()
     h = hashlib.md5(f"{path}/{overrideName}".encode("ascii")).hexdigest()
 
@@ -299,6 +312,9 @@ def build(path, overrideName=None):
         depflags.append("--extern")
         depflags.append(f"{n}={p}")
 
+    if extraFlags is None:
+        extraFlags = []
+
     call = [
         "rustc",
         "--crate-name",
@@ -315,6 +331,7 @@ def build(path, overrideName=None):
         "opt-level=3",
         "-C",
         "lto",
+        *extraFlags,
         *depflags,
         "-L",
         build_path / "out",
