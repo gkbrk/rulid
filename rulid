@@ -267,7 +267,7 @@ def build_dep(dep):
     elif method == "index":
         # Fetch the index
 
-        ind = download_cache("https://www.gkbrk.com/rulid-index.txt")
+        ind = download_cache("https://www.rulidpkg.com/rulid-index.txt")
         with open(ind) as index:
             for line in index:
                 line = line.strip()
