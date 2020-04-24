@@ -16,3 +16,4 @@
 [Packages]
 - Write a script to make a list of all packages in the index
   along with their documentation
+- Package tester / builder on a scheduled task, similar to Chicken Scheme
